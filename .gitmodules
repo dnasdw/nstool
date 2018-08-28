@@ -4,3 +4,10 @@
 [submodule "dep/libsundaowen"]
 	path = dep/libsundaowen
 	url = https://github.com/dnasdw/libsundaowen_src.git
+[submodule "dep/lz4"]
+	path = dep/lz4
+	url = https://github.com/dnasdw/libsundaowen_lz4.git
+	branch = master
+[submodule "dep/openssl"]
+	path = dep/openssl
+	url = https://github.com/dnasdw/libsundaowen_openssl.git

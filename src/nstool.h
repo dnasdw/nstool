@@ -19,13 +19,21 @@ public:
 		kActionNone,
 		kActionExtract,
 		kActionCreate,
+		kActionUncompress,
+		kActionCompress,
 		kActionSample,
 		kActionHelp
 	};
 	enum EFileType
 	{
 		kFileTypeUnknown,
+		kFileTypeNso,
 		kFileTypeRomFs
+	};
+	enum ECompressType
+	{
+		kCompressTypeNone,
+		kCompressTypeNsoLz4,
 	};
 	struct SOption
 	{
@@ -46,12 +54,16 @@ private:
 	bool checkFileType();
 	bool extractFile();
 	bool createFile();
+	bool uncompressFile();
+	bool compressFile();
 	int sample();
 	EAction m_eAction;
 	EFileType m_eFileType;
 	UString m_sFileName;
 	bool m_bVerbose;
 	bool m_b2016;
+	ECompressType m_eCompressType;
+	UString m_sCompressOutFileName;
 	UString m_sRomFsFileName;
 	UString m_sRomFsDirName;
 	UString m_sMessage;

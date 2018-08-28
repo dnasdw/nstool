@@ -3,6 +3,7 @@
 ## History
 
 - v1.0.0 @ 2018.07.01 - Support romfs
+- v1.0.1 @ 2018.08.27 - Support nso
 
 ## Platforms
 
@@ -16,6 +17,7 @@
 
 - cmake
 - libiconv
+- openssl-devel / libssl-dev
 
 ### Compiling
 
@@ -23,7 +25,7 @@
 ~~~
 mkdir build
 cd build
-cmake ..
+cmake -DUSE_DEP=OFF ..
 make
 ~~~
 
@@ -31,7 +33,7 @@ make
 ~~~
 mkdir build
 cd build
-cmake -DBUILD64=OFF ..
+cmake -DBUILD64=OFF -DUSE_DEP=OFF ..
 make
 ~~~
 

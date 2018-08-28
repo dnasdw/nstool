@@ -1,4 +1,5 @@
 #include "nstool.h"
+#include "nso.h"
 #include "romfs.h"
 
 CNsTool::SOption CNsTool::s_Option[] =
@@ -6,13 +7,18 @@ CNsTool::SOption CNsTool::s_Option[] =
 	{ nullptr, 0, USTR("action:") },
 	{ USTR("extract"), USTR('x'), USTR("extract the target file") },
 	{ USTR("create"), USTR('c'), USTR("create the target file") },
+	{ USTR("uncompress"), USTR('u'), USTR("uncompress the target file") },
+	{ USTR("compress"), USTR('z'), USTR("compress the target file") },
 	{ USTR("sample"), 0, USTR("show the samples") },
 	{ USTR("help"), USTR('h'), USTR("show this help") },
 	{ nullptr, 0, USTR("\ncommon:") },
-	{ USTR("type"), USTR('t'), USTR("[romfs]\n\t\tthe type of the file, optional") },
+	{ USTR("type"), USTR('t'), USTR("[nso|romfs]\n\t\tthe type of the file, optional") },
 	{ USTR("file"), USTR('f'), USTR("the target file, required") },
 	{ USTR("verbose"), USTR('v'), USTR("show the info") },
 	{ USTR("2016"), 0, USTR("AuthoringTool 2016 mode, garbage") },
+	{ nullptr, 0, USTR(" uncompress/compress:") },
+	{ USTR("compress-type"), 0, USTR("[nso-lz4]\n\t\tthe type of the compress") },
+	{ USTR("compress-out"), 0, USTR("the output file of uncompressed or compressed") },
 	{ nullptr, 0, USTR("\nromfs:") },
 	{ nullptr, 0, USTR(" create:") },
 	{ USTR("romfs"), 0, USTR("the reference romfs file") },
@@ -26,6 +32,7 @@ CNsTool::CNsTool()
 	, m_eFileType(kFileTypeUnknown)
 	, m_bVerbose(false)
 	, m_b2016(false)
+	, m_eCompressType(kCompressTypeNone)
 {
 }
 
@@ -141,14 +148,39 @@ int CNsTool::CheckOptions()
 		}
 		else
 		{
-			if (m_eFileType == kFileTypeRomFs)
+			switch (m_eFileType)
 			{
+			case kFileTypeRomFs:
 				if (m_sRomFsDirName.empty())
 				{
 					UPrintf(USTR("ERROR: no --romfs-dir option\n\n"));
 					return 1;
 				}
+				break;
+			default:
+				break;
 			}
+		}
+	}
+	if (m_eAction == kActionUncompress || m_eAction == kActionCompress)
+	{
+		if (m_eCompressType == kCompressTypeNone)
+		{
+			UPrintf(USTR("ERROR: no --compress-type option\n\n"));
+			return 1;
+		}
+		else if (m_eCompressType == kCompressTypeNsoLz4)
+		{
+			m_eFileType = kFileTypeNso;
+			if (!checkFileType())
+			{
+				UPrintf(USTR("ERROR: %") PRIUS USTR("\n\n"), m_sMessage.c_str());
+				return 1;
+			}
+		}
+		if (m_sCompressOutFileName.empty())
+		{
+			m_sCompressOutFileName = m_sFileName;
 		}
 	}
 	return 0;
@@ -207,6 +239,22 @@ int CNsTool::Action()
 			return 1;
 		}
 	}
+	if (m_eAction == kActionUncompress)
+	{
+		if (!uncompressFile())
+		{
+			UPrintf(USTR("ERROR: uncompress file failed\n\n"));
+			return 1;
+		}
+	}
+	if (m_eAction == kActionCompress)
+	{
+		if (!compressFile())
+		{
+			UPrintf(USTR("ERROR: compress file failed\n\n"));
+			return 1;
+		}
+	}
 	if (m_eAction == kActionSample)
 	{
 		return sample();
@@ -242,6 +290,28 @@ CNsTool::EParseOptionReturn CNsTool::parseOptions(const UChar* a_pName, int& a_n
 			return kParseOptionReturnOptionConflict;
 		}
 	}
+	else if (UCscmp(a_pName, USTR("uncompress")) == 0)
+	{
+		if (m_eAction == kActionNone)
+		{
+			m_eAction = kActionUncompress;
+		}
+		else if (m_eAction != kActionUncompress && m_eAction != kActionHelp)
+		{
+			return kParseOptionReturnOptionConflict;
+		}
+	}
+	else if (UCscmp(a_pName, USTR("compress")) == 0)
+	{
+		if (m_eAction == kActionNone)
+		{
+			m_eAction = kActionCompress;
+		}
+		else if (m_eAction != kActionCompress && m_eAction != kActionHelp)
+		{
+			return kParseOptionReturnOptionConflict;
+		}
+	}
 	else if (UCscmp(a_pName, USTR("sample")) == 0)
 	{
 		if (m_eAction == kActionNone)
@@ -264,7 +334,11 @@ CNsTool::EParseOptionReturn CNsTool::parseOptions(const UChar* a_pName, int& a_n
 			return kParseOptionReturnNoArgument;
 		}
 		UChar* pType = a_pArgv[++a_nIndex];
-		if (UCscmp(pType, USTR("romfs")) == 0)
+		if (UCscmp(pType, USTR("nso")) == 0)
+		{
+			m_eFileType = kFileTypeNso;
+		}
+		else if (UCscmp(pType, USTR("romfs")) == 0)
 		{
 			m_eFileType = kFileTypeRomFs;
 		}
@@ -289,6 +363,31 @@ CNsTool::EParseOptionReturn CNsTool::parseOptions(const UChar* a_pName, int& a_n
 	else if (UCscmp(a_pName, USTR("2016")) == 0)
 	{
 		m_b2016 = true;
+	}
+	else if (UCscmp(a_pName, USTR("compress-type")) == 0)
+	{
+		if (a_nIndex + 1 >= a_nArgc)
+		{
+			return kParseOptionReturnNoArgument;
+		}
+		UChar* pType = a_pArgv[++a_nIndex];
+		if (UCscmp(pType, USTR("nso-lz4")) == 0)
+		{
+			m_eCompressType = kCompressTypeNsoLz4;
+		}
+		else
+		{
+			m_sMessage = pType;
+			return kParseOptionReturnUnknownArgument;
+		}
+	}
+	else if (UCscmp(a_pName, USTR("compress-out")) == 0)
+	{
+		if (a_nIndex + 1 >= a_nArgc)
+		{
+			return kParseOptionReturnNoArgument;
+		}
+		m_sCompressOutFileName = a_pArgv[++a_nIndex];
 	}
 	else if (UCscmp(a_pName, USTR("romfs")) == 0)
 	{
@@ -325,7 +424,11 @@ bool CNsTool::checkFileType()
 {
 	if (m_eFileType == kFileTypeUnknown)
 	{
-		if (CRomFs::IsRomFsFile(m_sFileName))
+		if (CNso::IsNsoFile(m_sFileName))
+		{
+			m_eFileType = kFileTypeNso;
+		}
+		else if (CRomFs::IsRomFsFile(m_sFileName))
 		{
 			m_eFileType = kFileTypeRomFs;
 		}
@@ -340,6 +443,9 @@ bool CNsTool::checkFileType()
 		bool bMatch = false;
 		switch (m_eFileType)
 		{
+		case kFileTypeNso:
+			bMatch = CNso::IsNsoFile(m_sFileName);
+			break;
 		case kFileTypeRomFs:
 			bMatch = CRomFs::IsRomFsFile(m_sFileName);
 			break;
@@ -397,9 +503,41 @@ bool CNsTool::createFile()
 	return bResult;
 }
 
+bool CNsTool::uncompressFile()
+{
+	bool bResult = false;
+	if (m_eCompressType == kCompressTypeNsoLz4)
+	{
+		CNso nso;
+		nso.SetFileName(m_sFileName);
+		nso.SetVerbose(m_bVerbose);
+		nso.SetCompressOutFileName(m_sCompressOutFileName);
+		bResult = nso.UncompressFile();
+	}
+	return bResult;
+}
+
+bool CNsTool::compressFile()
+{
+	bool bResult = false;
+	if (m_eCompressType == kCompressTypeNsoLz4)
+	{
+		CNso nso;
+		nso.SetFileName(m_sFileName);
+		nso.SetVerbose(m_bVerbose);
+		nso.SetCompressOutFileName(m_sCompressOutFileName);
+		bResult = nso.CompressFile();
+	}
+	return bResult;
+}
+
 int CNsTool::sample()
 {
 	UPrintf(USTR("sample:\n"));
+	UPrintf(USTR("# uncompress nso with LZ4\n"));
+	UPrintf(USTR("nstool -uvf main --compress-type nso-lz4 --compress-out main.unz\n\n"));
+	UPrintf(USTR("# compress nso with LZ4\n"));
+	UPrintf(USTR("nstool -zvf main.unz --compress-type nso-lz4 --compress-out main\n\n"));
 	UPrintf(USTR("# extract romfs\n"));
 	UPrintf(USTR("nstool -xvtf romfs romfs.bin --romfs-dir romfs\n\n"));
 	UPrintf(USTR("# create romfs without reference\n"));
