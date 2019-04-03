@@ -4,6 +4,7 @@
 
 - v1.0.0 @ 2018.07.01 - Support romfs
 - v1.0.1 @ 2018.08.27 - Support nso
+- v1.0.2 @ 2019.04.03 - Fix nso hash
 
 ## Platforms
 

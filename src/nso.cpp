@@ -172,10 +172,11 @@ bool CNso::uncompressText(vector<u8>& a_vNso, u32& a_uUncompressedOffset)
 {
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pCompressedNsoHeader->Flags & TextCompress) != 0;
+	bool bHashed = (pCompressedNsoHeader->Flags & TextHash) != 0;
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pUncompressedNsoHeader->TextFileOffset;
 	u32 uCompressedSize = pUncompressedNsoHeader->TextFileSize;
-	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->TextSize, pUncompressedNsoHeader->TextHash, a_vNso, a_uUncompressedOffset))
+	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->TextSize, bHashed ? pUncompressedNsoHeader->TextHash : nullptr, a_vNso, a_uUncompressedOffset))
 	{
 		return false;
 	}
@@ -188,10 +189,11 @@ bool CNso::uncompressRo(vector<u8>& a_vNso, u32& a_uUncompressedOffset)
 {
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pCompressedNsoHeader->Flags & RoCompress) != 0;
+	bool bHashed = (pCompressedNsoHeader->Flags & RoHash) != 0;
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pUncompressedNsoHeader->RoFileOffset;
 	u32 uCompressedSize = pUncompressedNsoHeader->RoFileSize;
-	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->RoSize, pUncompressedNsoHeader->RoHash, a_vNso, a_uUncompressedOffset))
+	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->RoSize, bHashed ? pUncompressedNsoHeader->RoHash : nullptr, a_vNso, a_uUncompressedOffset))
 	{
 		return false;
 	}
@@ -204,10 +206,11 @@ bool CNso::uncompressData(vector<u8>& a_vNso, u32& a_uUncompressedOffset)
 {
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pCompressedNsoHeader->Flags & DataCompress) != 0;
+	bool bHashed = (pCompressedNsoHeader->Flags & DataHash) != 0;
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pUncompressedNsoHeader->DataFileOffset;
 	u32 uCompressedSize = pUncompressedNsoHeader->DataFileSize;
-	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->DataSize, pUncompressedNsoHeader->DataHash, a_vNso, a_uUncompressedOffset))
+	if (!uncompress(bCompressed, uOffset, uCompressedSize, pUncompressedNsoHeader->DataSize, bHashed ? pUncompressedNsoHeader->DataHash : nullptr, a_vNso, a_uUncompressedOffset))
 	{
 		return false;
 	}
@@ -273,10 +276,11 @@ bool CNso::compressText(vector<u8>& a_vNso, u32& a_uCompressedOffset)
 {
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pUncompressedNsoHeader->Flags & TextCompress) != 0;
+	bool bHashed = (pUncompressedNsoHeader->Flags & TextHash) != 0;
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pCompressedNsoHeader->TextFileOffset;
 	u32 uCompressedSize = pCompressedNsoHeader->TextFileSize;
-	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->TextSize, bCompressed ? nullptr : pCompressedNsoHeader->TextHash, a_vNso, a_uCompressedOffset))
+	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->TextSize, bHashed && !bCompressed ? pCompressedNsoHeader->TextHash : nullptr, a_vNso, a_uCompressedOffset))
 	{
 		return false;
 	}
@@ -289,10 +293,11 @@ bool CNso::compressRo(vector<u8>& a_vNso, u32& a_uCompressedOffset)
 {
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pUncompressedNsoHeader->Flags & RoCompress) != 0;
+	bool bHashed = (pUncompressedNsoHeader->Flags & RoHash) != 0;
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pCompressedNsoHeader->RoFileOffset;
 	u32 uCompressedSize = pCompressedNsoHeader->RoFileSize;
-	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->RoSize, bCompressed ? nullptr : pCompressedNsoHeader->RoHash, a_vNso, a_uCompressedOffset))
+	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->RoSize, bHashed && !bCompressed ? pCompressedNsoHeader->RoHash : nullptr, a_vNso, a_uCompressedOffset))
 	{
 		return false;
 	}
@@ -305,10 +310,11 @@ bool CNso::compressData(vector<u8>& a_vNso, u32& a_uCompressedOffset)
 {
 	NsoHeader* pUncompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*m_vNso.begin());
 	bool bCompressed = (pUncompressedNsoHeader->Flags & DataCompress) != 0;
+	bool bHashed = (pUncompressedNsoHeader->Flags & DataHash) != 0;
 	NsoHeader* pCompressedNsoHeader = reinterpret_cast<NsoHeader*>(&*a_vNso.begin());
 	u32 uOffset = pCompressedNsoHeader->DataFileOffset;
 	u32 uCompressedSize = pCompressedNsoHeader->DataFileSize;
-	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->DataSize, bCompressed ? nullptr : pCompressedNsoHeader->DataHash, a_vNso, a_uCompressedOffset))
+	if (!compress(!bCompressed, uOffset, uCompressedSize, pCompressedNsoHeader->DataSize, bHashed && !bCompressed ? pCompressedNsoHeader->DataHash : nullptr, a_vNso, a_uCompressedOffset))
 	{
 		return false;
 	}
