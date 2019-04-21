@@ -16,9 +16,15 @@ CNsTool::SOption CNsTool::s_Option[] =
 	{ USTR("file"), USTR('f'), USTR("the target file, required") },
 	{ USTR("verbose"), USTR('v'), USTR("show the info") },
 	{ USTR("2016"), 0, USTR("AuthoringTool 2016 mode, garbage") },
+	{ nullptr, 0, USTR(" extract/create:") },
+	{ nullptr, 0, USTR("  nso:") },
+	{ USTR("header"), 0, USTR("the header file of the target file") },
 	{ nullptr, 0, USTR(" uncompress/compress:") },
 	{ USTR("compress-type"), 0, USTR("[nso-lz4]\n\t\tthe type of the compress") },
 	{ USTR("compress-out"), 0, USTR("the output file of uncompressed or compressed") },
+	{ nullptr, 0, USTR("\nnso:") },
+	{ nullptr, 0, USTR(" extract/create:") },
+	{ USTR("nso-dir"), 0, USTR("the nso dir for the nso file") },
 	{ nullptr, 0, USTR("\nromfs:") },
 	{ nullptr, 0, USTR(" create:") },
 	{ USTR("romfs"), 0, USTR("the reference romfs file") },
@@ -128,6 +134,13 @@ int CNsTool::CheckOptions()
 		}
 		switch (m_eFileType)
 		{
+		case kFileTypeNso:
+			if (m_sHeaderFileName.empty() && m_sNsoDirName.empty())
+			{
+				UPrintf(USTR("ERROR: nothing to be extract\n\n"));
+				return 1;
+			}
+			break;
 		case kFileTypeRomFs:
 			if (m_sRomFsDirName.empty())
 			{
@@ -148,8 +161,23 @@ int CNsTool::CheckOptions()
 		}
 		else
 		{
+			if (m_eFileType == kFileTypeNso)
+			{
+				if (m_sHeaderFileName.empty())
+				{
+					UPrintf(USTR("ERROR: no --header option\n\n"));
+					return 1;
+				}
+			}
 			switch (m_eFileType)
 			{
+			case kFileTypeNso:
+				if (m_sNsoDirName.empty())
+				{
+					UPrintf(USTR("ERROR: no --nso-dir option\n\n"));
+					return 1;
+				}
+				break;
 			case kFileTypeRomFs:
 				if (m_sRomFsDirName.empty())
 				{
@@ -364,6 +392,14 @@ CNsTool::EParseOptionReturn CNsTool::parseOptions(const UChar* a_pName, int& a_n
 	{
 		m_b2016 = true;
 	}
+	else if (UCscmp(a_pName, USTR("header")) == 0)
+	{
+		if (a_nIndex + 1 >= a_nArgc)
+		{
+			return kParseOptionReturnNoArgument;
+		}
+		m_sHeaderFileName = a_pArgv[++a_nIndex];
+	}
 	else if (UCscmp(a_pName, USTR("compress-type")) == 0)
 	{
 		if (a_nIndex + 1 >= a_nArgc)
@@ -396,6 +432,14 @@ CNsTool::EParseOptionReturn CNsTool::parseOptions(const UChar* a_pName, int& a_n
 			return kParseOptionReturnNoArgument;
 		}
 		m_sRomFsFileName = a_pArgv[++a_nIndex];
+	}
+	else if (UCscmp(a_pName, USTR("nso-dir")) == 0)
+	{
+		if (a_nIndex + 1 >= a_nArgc)
+		{
+			return kParseOptionReturnNoArgument;
+		}
+		m_sNsoDirName = a_pArgv[++a_nIndex];
 	}
 	else if (UCscmp(a_pName, USTR("romfs-dir")) == 0)
 	{
@@ -466,6 +510,16 @@ bool CNsTool::extractFile()
 	bool bResult = false;
 	switch (m_eFileType)
 	{
+	case kFileTypeNso:
+		{
+			CNso nso;
+			nso.SetFileName(m_sFileName);
+			nso.SetVerbose(m_bVerbose);
+			nso.SetHeaderFileName(m_sHeaderFileName);
+			nso.SetNsoDirName(m_sNsoDirName);
+			bResult = nso.ExtractFile();
+		}
+		break;
 	case kFileTypeRomFs:
 		{
 			CRomFs romFs;
@@ -486,6 +540,16 @@ bool CNsTool::createFile()
 	bool bResult = false;
 	switch (m_eFileType)
 	{
+	case kFileTypeNso:
+		{
+			CNso nso;
+			nso.SetFileName(m_sFileName);
+			nso.SetVerbose(m_bVerbose);
+			nso.SetHeaderFileName(m_sHeaderFileName);
+			nso.SetNsoDirName(m_sNsoDirName);
+			bResult = nso.CreateFile();
+		}
+		break;
 	case kFileTypeRomFs:
 		{
 			CRomFs romFs;
@@ -534,16 +598,20 @@ bool CNsTool::compressFile()
 int CNsTool::sample()
 {
 	UPrintf(USTR("sample:\n"));
-	UPrintf(USTR("# uncompress nso with LZ4\n"));
-	UPrintf(USTR("nstool -uvf main --compress-type nso-lz4 --compress-out main.unz\n\n"));
-	UPrintf(USTR("# compress nso with LZ4\n"));
-	UPrintf(USTR("nstool -zvf main.unz --compress-type nso-lz4 --compress-out main\n\n"));
+	UPrintf(USTR("# extract nso\n"));
+	UPrintf(USTR("nstool -xvtf nso main --header mainheader.bin --nso-dir main.dir\n\n"));
 	UPrintf(USTR("# extract romfs\n"));
 	UPrintf(USTR("nstool -xvtf romfs romfs.bin --romfs-dir romfs\n\n"));
+	UPrintf(USTR("# create nso\n"));
+	UPrintf(USTR("nstool -cvtf nso main --header mainheader.bin --nso-dir main.dir\n\n"));
 	UPrintf(USTR("# create romfs without reference\n"));
 	UPrintf(USTR("nstool -cvtf romfs romfs.bin --romfs-dir romfs\n\n"));
 	UPrintf(USTR("# create romfs with reference\n"));
 	UPrintf(USTR("nstool -cvtf romfs romfs.bin --romfs-dir romfs --romfs original_romfs.bin\n\n"));
+	UPrintf(USTR("# uncompress nso with LZ4\n"));
+	UPrintf(USTR("nstool -uvf main --compress-type nso-lz4 --compress-out main.unz\n\n"));
+	UPrintf(USTR("# compress nso with LZ4\n"));
+	UPrintf(USTR("nstool -zvf main.unz --compress-type nso-lz4 --compress-out main\n\n"));
 	return 0;
 }
 

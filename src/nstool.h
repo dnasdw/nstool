@@ -62,9 +62,11 @@ private:
 	UString m_sFileName;
 	bool m_bVerbose;
 	bool m_b2016;
+	UString m_sHeaderFileName;
 	ECompressType m_eCompressType;
 	UString m_sCompressOutFileName;
 	UString m_sRomFsFileName;
+	UString m_sNsoDirName;
 	UString m_sRomFsDirName;
 	UString m_sMessage;
 };
