@@ -6,6 +6,7 @@
 - v1.0.1 @ 2018.08.27 - Support nso
 - v1.0.2 @ 2019.04.03 - Fix nso hash
 - v1.0.3 @ 2019.04.21 - Support extract and create nso
+- v1.0.4 @ 2019.05.25 - Fix remap ignore invalid
 
 ## Platforms
 
